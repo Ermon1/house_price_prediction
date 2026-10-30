@@ -1,20 +1,24 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from inference import predict_price, batch_predict
+from inference import predict_price, batch_predict, load_artifacts, artifacts
 from schemas import HousePredictionRequest, PredictionResponse
 
-# Initialize FastAPI app with metadata
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_artifacts()
+    yield
+    artifacts.clear()
+
+
 app = FastAPI(
     title="House Price Prediction API",
-    description=(
-        "An API for predicting house prices based on various features. "
-    ),
+    description="An API for predicting house prices based on various features.",
     version="1.0.0",
-    
-    
+    lifespan=lifespan,
 )
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,17 +27,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Health check endpoint
-@app.get("/health", response_model=dict)
-async def health_check():
-    return {"status": "healthy", "model_loaded": True}
 
-# Prediction endpoint
+@app.get("/health", response_model=dict)
+def health_check():
+    return {"status": "healthy", "model_loaded": "model" in artifacts}
+
+
 @app.post("/predict", response_model=PredictionResponse)
-async def predict(request: HousePredictionRequest):
+def predict(request: HousePredictionRequest):
     return predict_price(request)
 
-# Batch prediction endpoint
-@app.post("/batch-predict", response_model=list)
-async def batch_predict_endpoint(requests: list[HousePredictionRequest]):
+
+@app.post("/batch-predict", response_model=list[float])
+def batch_predict_endpoint(requests: list[HousePredictionRequest]):
     return batch_predict(requests)

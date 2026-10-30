@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    ports:
+      - "8009:8000"
+    restart: unless-stopped
+
+  streamlit:
+    build:
+      context: ./streamlit_app
+      dockerfile: Dockerfile.streamlit
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://fastapi:8009  
+    depends_on:
+      - fastapi
+    restart: unless-stopped

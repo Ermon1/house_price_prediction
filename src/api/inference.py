@@ -7,11 +7,18 @@ from schemas import HousePredictionRequest, PredictionResponse
 MODEL_PATH = "models/trained/house_price_model.pkl"
 PREPROCESSOR_PATH = "models/trained/preprocessor.pkl"
 
-try:
-    model = joblib.load(MODEL_PATH)
-    preprocessor = joblib.load(PREPROCESSOR_PATH)
-except Exception as e:
-    raise RuntimeError(f"Error loading model or preprocessor: {str(e)}")
+artifacts ={
+
+}
+
+def load_artifacts():
+    try:
+        artifacts['model'] = joblib.load(MODEL_PATH)
+        artifacts['preprocessor'] = joblib.load(PREPROCESSOR_PATH)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load artifacts: {e}")
+
+    
 
 def predict_price(request: HousePredictionRequest) -> PredictionResponse:
     """
@@ -24,10 +31,10 @@ def predict_price(request: HousePredictionRequest) -> PredictionResponse:
     input_data['price_per_sqft'] = 0  # Dummy value for compatibility
 
     # Preprocess input data
-    processed_features = preprocessor.transform(input_data)
+    processed_features = artifacts['preprocessor'].transform(input_data)
 
     # Make prediction
-    predicted_price = model.predict(processed_features)[0]
+    predicted_price = artifacts['model'].predict(processed_features)[0]
 
     # Convert numpy.float32 to Python float and round to 2 decimal places
     predicted_price = round(float(predicted_price), 2)
@@ -55,8 +62,8 @@ def batch_predict(requests: list[HousePredictionRequest]) -> list[float]:
     input_data['price_per_sqft'] = 0  # Dummy value for compatibility
 
     # Preprocess input data
-    processed_features = preprocessor.transform(input_data)
+    processed_features = artifacts['preprocessor'].transform(input_data)
 
     # Make predictions
-    predictions = model.predict(processed_features)
+    predictions = artifacts['model'].predict(processed_features)
     return predictions.tolist()

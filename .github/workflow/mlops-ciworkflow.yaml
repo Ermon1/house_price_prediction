@@ -1,0 +1,31 @@
+name: MLOps CI Workflow
+
+
+# this is the event which cause the workflow to run the jobs 
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.5'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+        

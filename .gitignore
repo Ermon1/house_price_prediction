@@ -42,7 +42,4 @@ dist/
 # Ignore all .pkl files (models, preprocessors, etc.)
 *.pkl
 
-
-
-data/raw/
 data/processed/

@@ -314,7 +314,7 @@ hostname = socket.gethostname()
 try:
     ip_address = socket.gethostbyname(hostname)
 except socket.gaierror:
-    ip_address = "unavailable"
+    ip_address = "unavailable for now"
 
 st.markdown(
     f"""

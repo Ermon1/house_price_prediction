@@ -2,12 +2,12 @@ name: MLOps Pipeline
 
 on:
   push:
-    branches: [main]
-    tags: ['v*.*.*']
+    branches: [ main ]
+    tags: [ 'v*.*.*' ]
     paths-ignore:
       - 'streamlit_app/**'
   pull_request:
-    branches: [main]
+    branches: [ main ]
     paths-ignore:
       - 'streamlit_app/**'
 
@@ -84,13 +84,12 @@ jobs:
           name: processed-data
           path: data/processed/
 
-      - name: Start MLflow server
+      - name: Set up MLflow
         run: |
-          nohup mlflow server \
-            --host 127.0.0.1 --port 5000 \
-            --backend-store-uri sqlite:///mlflow.db \
-            --default-artifact-root ./mlartifacts \
-            > mlflow.log 2>&1 &
+          docker pull ghcr.io/mlflow/mlflow:latest
+          docker run -d -p 5000:5000 --name mlflow-server \
+            ghcr.io/mlflow/mlflow:latest \
+            mlflow server --host 0.0.0.0 --backend-store-uri sqlite:///mlflow.db
 
       - name: Wait for MLflow to start
         run: |
@@ -103,7 +102,7 @@ jobs:
             sleep 5
           done
           echo "MLflow failed to start"
-          cat mlflow.log
+          docker logs mlflow-server
           exit 1
 
       - name: Train model
@@ -120,6 +119,12 @@ jobs:
         with:
           name: trained-model
           path: models/
+
+      - name: Clean up MLflow
+        if: always()
+        run: |
+          docker stop mlflow-server || true
+          docker rm mlflow-server || true
 
   build-and-publish:
     needs: model-training
@@ -151,23 +156,12 @@ jobs:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Generate image tags
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-api
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ github.sha }}
-            type=semver,pattern={{version}}
-
       - name: Build and push FastAPI image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile.fastapi
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: |
+            docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-api:latest
+            docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-api:${{ github.sha }}
